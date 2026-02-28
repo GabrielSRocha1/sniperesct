@@ -11,7 +11,7 @@ const App: React.FC = () => {
   // 2. DADOS DE MERCADO LIVE (ORACLE DE ESTADO - VERSÃO ESTÁVEL)
   const [marketCap, setMarketCap] = useState(42000);
   const [supply, setSupply] = useState(600000000); // Ajustado para 600M conforme solicitado
-  const [esctPrice, setEsctPrice] = useState(0.00042);
+  const [bdcPrice, setBdcPrice] = useState(0.00042);
 
   const [prices, setPrices] = useState({
     bitcoin: 89360,
@@ -25,15 +25,15 @@ const App: React.FC = () => {
   // 3. INTEGRAÇÃO APIs REAL-TIME (SYNC TOTAL 10S)
   const fetchPrices = async () => {
     try {
-      // ESCT Oracle - DexScreener (Contrato: Ctauy54NbyabVqGXHuY5wwVEAh29mGhh5KGfif5jppZt)
-      const esctResponse = await fetch('https://api.dexscreener.com/latest/dex/tokens/Ctauy54NbyabVqGXHuY5wwVEAh29mGhh5KGfif5jppZt');
-      const esctData = await esctResponse.json();
+      // BDC Oracle - DexScreener (Contrato: AeAQdgjGqtHErysb5FBvUxNxmob2mVBGnEXdmULJ7dH9)
+      const bdcResponse = await fetch('https://api.dexscreener.com/latest/dex/tokens/AeAQdgjGqtHErysb5FBvUxNxmob2mVBGnEXdmULJ7dH9');
+      const bdcData = await bdcResponse.json();
 
-      if (esctData.pairs && esctData.pairs[0]) {
-        const pair = esctData.pairs[0];
+      if (bdcData.pairs && bdcData.pairs[0]) {
+        const pair = bdcData.pairs[0];
         const price = parseFloat(pair.priceUsd);
         if (!isNaN(price)) {
-          setEsctPrice(price);
+          setBdcPrice(price);
           // O Supply é fixado em 600.000.000 para a simulação de tokenomics
           const fixedSupply = 600000000;
           setSupply(fixedSupply);
@@ -70,26 +70,24 @@ const App: React.FC = () => {
   const getStatsAtMonth = (m: number) => {
     if (!isActive) return { total: 0, base: 0, yieldVal: 0, price: 0, mcap: 0, holdersCount: 0 };
 
-    // --- CONFIGURAÇÃO DA FÓRMULA SNIPER (META: 12.000% DE VALORIZAÇÃO EM 36M) ---
-    // Com holders padrão=1000 e m=36: fatorComunidade = (1000*36)/36000 = 1.0
-    // precoProjetado = esctPrice * (1 + 120*1.0) = esctPrice * 121 → ROI = 12000%
+    // --- CONFIGURAÇÃO DA FÓRMULA SNIPER (BDC BENCHMARK - 12,000% GAIN) ---
     const MULTIPLICADOR_BNB = 120;
     const ALVO_CONVERSAO = 36000;
 
     // No simulador, meta de usuários é o crescimento projetado ao longo dos meses
     const currentHolders = holders * m;
 
-    // Fator de Intensidade da Comunidade (Quanto mais perto dos 36k, mais próximo do ROI alvo de 12.000%)
+    // Fator de Intensidade da Comunidade (Quanto mais perto dos 15k, mais próximo do ROI da BNB)
     const fatorComunidade = currentHolders / ALVO_CONVERSAO;
 
-    // Preço Projetado baseado na meta de 12.000% em 36 meses
-    const precoProjetado = esctPrice * (1 + (MULTIPLICADOR_BNB * fatorComunidade));
+    // Preço Projetado baseado no potencial histórico da BNB
+    const precoProjetado = bdcPrice * (1 + (MULTIPLICADOR_BNB * fatorComunidade));
 
     // Cálculo de Market Cap comparativo
     const marketCapProjetado = precoProjetado * supply;
 
     // Patrimônio Total (ROI + 2.1% Staking Yield mensal)
-    const tokensIniciais = aporte / esctPrice;
+    const tokensIniciais = aporte / bdcPrice;
     const yieldFactor = Math.pow(1.021, m);
     const finalWealth = (tokensIniciais * yieldFactor) * precoProjetado;
 
@@ -106,8 +104,8 @@ const App: React.FC = () => {
     };
   };
 
-  const finalEsct = getStatsAtMonth(36);
-  const patrimonioProjetadoTotal = finalEsct.total;
+  const finalBdc = getStatsAtMonth(36);
+  const patrimonioProjetadoTotal = finalBdc.total;
   const ganhoLiquido = Math.max(0, patrimonioProjetadoTotal - aporte);
   const roiMultiplierValue = isActive && aporte > 0 ? (patrimonioProjetadoTotal / aporte) : 0;
 
@@ -115,10 +113,10 @@ const App: React.FC = () => {
     if (!isActive) return { vStr: "0% | 0% | 0%", eStr: "$0 | $0 | $0", roi: "0.00%", m12v: 0, m24v: 0, m36v: 0 };
 
     let m12, m24, m36;
-    if (name === 'ESCT') {
+    if (name === 'BDC') {
       m12 = getStatsAtMonth(12).total;
       m24 = getStatsAtMonth(24).total;
-      m36 = finalEsct.total;
+      m36 = finalBdc.total;
     } else if (name === 'SOL') {
       m12 = aporte * 1.45; m24 = aporte * 2.20; m36 = aporte * 3.20;
     } else if (name === 'ETH') {
@@ -134,12 +132,12 @@ const App: React.FC = () => {
     return { vStr, eStr, roi, m12v: m12, m24v: m24, m36v: m36 };
   };
 
-  const esctRow = calculateRowStats('ESCT');
-  const bronzeValStr = `$ ${esctRow.m12v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  const prataValStr = `$ ${esctRow.m24v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const bdcRow = calculateRowStats('BDC');
+  const bronzeValStr = `$ ${bdcRow.m12v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const prataValStr = `$ ${bdcRow.m24v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   const ouroValStr = `$ ${patrimonioProjetadoTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  const bronzePct = isActive ? Math.min(100, (esctRow.m12v / patrimonioProjetadoTotal) * 100) : 0;
-  const prataPct = isActive ? Math.min(100, (esctRow.m24v / patrimonioProjetadoTotal) * 100) : 0;
+  const bronzePct = isActive ? Math.min(100, (bdcRow.m12v / patrimonioProjetadoTotal) * 100) : 0;
+  const prataPct = isActive ? Math.min(100, (bdcRow.m24v / patrimonioProjetadoTotal) * 100) : 0;
   const ouroPct = isActive ? 100 : 0;
 
   // 5. CHART ENGINE
@@ -193,14 +191,14 @@ const App: React.FC = () => {
         const total = baseAtivo + yieldIncentivo;
         const realPrice = dataMap['PREÇO PROJETADO'] || 0;
         const holdersCount = dataMap['HOLDERS TOTAIS'] || 0;
-        const fontSizeLabel = isMobile ? '9.5px' : '11.5px';
-        const fontSizeValue = isMobile ? '12.5px' : '14.5px';
-        const fontSizeTotal = isMobile ? '17.5px' : '23.5px';
+        const fontSizeLabel = isMobile ? '8px' : '10px';
+        const fontSizeValue = isMobile ? '11px' : '13px';
+        const fontSizeTotal = isMobile ? '16px' : '22px';
 
         tooltipEl.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: ${isMobile ? '6px' : '10px'}; margin-bottom: ${isMobile ? '8px' : '12px'};">
-            <span style="font-family: Montserrat; font-weight: 500; font-size: ${isMobile ? '10.5px' : '12.5px'}; color: #888; text-transform: uppercase;">MÊS ${month}</span>
-            <span style="font-family: Montserrat; font-weight: 900; font-size: ${isMobile ? '8.5px' : '10.5px'}; color: #FFC107; text-transform: uppercase;">QUANT ORACLE</span>
+            <span style="font-family: Montserrat; font-weight: 500; font-size: ${isMobile ? '9px' : '11px'}; color: #888; text-transform: uppercase;">MÊS ${month}</span>
+            <span style="font-family: Montserrat; font-weight: 900; font-size: ${isMobile ? '7px' : '9px'}; color: #FFC107; text-transform: uppercase;">QUANT ORACLE</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: ${isMobile ? '4px' : '8px'};">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -221,7 +219,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: ${isMobile ? '6px' : '10px'}; margin-top: ${isMobile ? '8px' : '12px'}; text-align: center;">
-            <div style="font-family: Montserrat; font-weight: 700; font-size: ${isMobile ? '9.5px' : '10.5px'}; color: #777; margin-bottom: 2px;">TOTAL:</div>
+            <div style="font-family: Montserrat; font-weight: 700; font-size: ${isMobile ? '8px' : '9px'}; color: #777; margin-bottom: 2px;">TOTAL:</div>
             <div style="font-family: Montserrat; font-weight: 500; font-size: ${fontSizeTotal}; color: #FFC107;">$ ${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
           </div>
         `;
@@ -264,22 +262,22 @@ const App: React.FC = () => {
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTooltipHandler } },
         scales: {
-          x: { grid: { color: 'rgba(255, 255, 255, 0.03)' }, ticks: { color: '#666', font: { size: isMobile ? 9.5 : 13.5, weight: 'normal' } } },
-          y: { position: 'left', grid: { color: 'rgba(255, 255, 255, 0.06)' }, beginAtZero: true, ticks: { color: '#FFF', font: { size: isMobile ? 9.5 : 15.5, weight: '500' }, callback: (v: any) => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}K` } },
-          y1: { position: 'right', display: true, grid: { drawOnChartArea: false }, ticks: { color: '#22C55E', font: { size: isMobile ? 9.5 : 12.5, weight: 'normal' }, callback: (v: any) => `$${v.toFixed(4)}` } },
+          x: { grid: { color: 'rgba(255, 255, 255, 0.03)' }, ticks: { color: '#666', font: { size: isMobile ? 8 : 12, weight: 'normal' } } },
+          y: { position: 'left', grid: { color: 'rgba(255, 255, 255, 0.06)' }, beginAtZero: true, ticks: { color: '#FFF', font: { size: isMobile ? 8 : 14, weight: '500' }, callback: (v: any) => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}K` } },
+          y1: { position: 'right', display: true, grid: { drawOnChartArea: false }, ticks: { color: '#22C55E', font: { size: isMobile ? 8 : 11, weight: 'normal' }, callback: (v: any) => `$${v.toFixed(4)}` } },
           y2: { position: 'right', display: false, grid: { drawOnChartArea: false } }
         }
       }
     });
-  }, [aporte, holders, ticket, supply, marketCap, isActive, esctPrice]);
+  }, [aporte, holders, ticket, supply, marketCap, isActive, bdcPrice]);
 
   return (
     <div className="min-h-screen p-6 md:p-14 bg-black flex flex-col items-center overflow-x-hidden">
       <header className="mb-14 text-center">
         <h1 className="text-4xl md:text-6xl font-heading font-black tracking-tighter italic text-white uppercase mb-2">
-          ESCOTEIRO SNIPER SIMULATOR
+          BODE SNIPER SIMULATOR
         </h1>
-        <p className="text-[14px] text-gray-500 font-black uppercase tracking-[0.6em]">
+        <p className="text-[10px] md:text-[11px] text-gray-500 font-black uppercase tracking-[0.6em]">
           SIMULADOR DE RIQUEZA, TOKENOMICS E COMPARAÇÃO ESTRATÉGICA
         </p>
       </header>
@@ -291,7 +289,7 @@ const App: React.FC = () => {
             {/* VÍDEO: Segundo elemento a aparecer no mobile */}
             <div className="order-1 lg:order-2 lg:mt-8 bg-[#111] rounded-[24px] border border-white/5 overflow-hidden shadow-2xl aspect-video relative group">
               <video autoPlay loop muted playsInline className="w-full h-full object-cover">
-                <source src="/grok-video-66c36791-32aa-49eb-b6e6-0e59978328b2.mp4" type="video/mp4" />
+                <source src="/grok-video-1f6c1d12-0d59-4dc3-a7ec-a9cf0ea8b5b7 (1).mp4" type="video/mp4" />
               </video>
               <div className="absolute bottom-4 left-4 flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
@@ -301,7 +299,7 @@ const App: React.FC = () => {
 
             {/* PARÂMETROS: Terceiro elemento no mobile */}
             <div className="order-2 lg:order-1 bg-[#111] p-8 rounded-[24px] border border-white/5 shadow-2xl">
-              <h2 className="text-gold font-heading font-black uppercase text-[20px] tracking-[0.2em] border-b border-white/5 pb-5 mb-8">
+              <h2 className="text-gold font-heading font-black uppercase text-[12px] tracking-[0.2em] border-b border-white/5 pb-5 mb-8">
                 Parâmetros do sniper
               </h2>
               <div className="space-y-6">
@@ -313,9 +311,9 @@ const App: React.FC = () => {
                   { label: 'Supply Circulante', val: supply, set: null, unit: 'Tokens', readOnly: true, info: 'Pool Dynamics' },
                 ].map((input, idx) => (
                   <div key={idx} className="flex flex-col gap-1.5">
-                    <label className="text-[14px] text-gray-400 uppercase font-black tracking-wider flex justify-between">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-wider flex justify-between">
                       {input.label}
-                      {input.info && <span className="text-[10px] text-white/20">{input.info}</span>}
+                      {input.info && <span className="text-[7px] text-white/20">{input.info}</span>}
                     </label>
                     <input
                       type="number"
@@ -325,24 +323,24 @@ const App: React.FC = () => {
                       className={`bg-black border ${input.readOnly ? 'border-white/5 text-white/30 cursor-not-allowed' : 'border-white/10 text-white'} p-3 rounded-xl w-full font-mono text-[13px] focus:outline-none transition-all`}
                     />
                     <div className="flex justify-start px-1">
-                      <span className="text-[14px] text-white/50 font-mono font-medium uppercase tracking-tight">
+                      <span className="text-[9px] text-white/50 font-mono font-medium uppercase tracking-tight">
                         {input.unit} {input.val.toLocaleString('pt-BR')}
                       </span>
                     </div>
                   </div>
                 ))}
                 <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-                  <label className="text-[14px] text-gold uppercase font-black tracking-wider">Qtd. ESCT (Snipado)</label>
-                  <input readOnly value={(esctPrice > 0 ? aporte / esctPrice : 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} className="bg-gold/10 border border-gold/50 p-3 rounded-xl w-full text-gold font-mono text-[13px] cursor-default" />
+                  <label className="text-[10px] text-gold uppercase font-black tracking-wider">Qtd. BDC (Snipado)</label>
+                  <input readOnly value={(bdcPrice > 0 ? aporte / bdcPrice : 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} className="bg-gold/10 border border-gold/50 p-3 rounded-xl w-full text-gold font-mono text-[13px] cursor-default" />
                   <div className="flex justify-start px-1">
-                    <span className="text-[14px] text-gold/60 font-mono font-medium uppercase tracking-widest animate-pulse-gold">PREÇO LIVE: ${esctPrice.toFixed(6)}</span>
+                    <span className="text-[8px] text-gold/60 font-mono font-medium uppercase tracking-widest animate-pulse-gold">PREÇO LIVE: ${bdcPrice.toFixed(6)}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* BOTÃO: Quarto elemento no mobile */}
-            <button className="order-3 lg:mt-auto lg:pt-8 bg-gold text-black w-full py-5 rounded-2xl font-heading font-black text-[22px] uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(255,193,7,0.3)]">
+            <button className="order-3 lg:mt-auto lg:pt-8 bg-gold text-black w-full py-5 rounded-2xl font-heading font-black text-sm uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(255,193,7,0.3)]">
               EXECUTAR SNIPING
             </button>
           </aside>
@@ -360,7 +358,7 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { id: 'esct', name: 'ESCT', price: esctPrice, icon: 'https://gateway.lighthouse.storage/ipfs/bafkreig4gwqmpwrvai3boloziuzwxhr4yhadkyxrbofxw4wzmccxtkrw3q', theme: 'emerald' },
+                { id: 'bdc', name: 'BDC', price: bdcPrice, icon: '/FAVICON.png', theme: 'emerald' },
                 { id: 'btc', name: 'BTC', price: prices.bitcoin, icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png', theme: 'gold' },
                 { id: 'eth', name: 'ETH', price: prices.ethereum, icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png', theme: 'orange' },
                 { id: 'sol', name: 'SOL', price: prices.solana, icon: 'https://assets.coingecko.com/coins/images/4128/small/solana.png', theme: 'cyan' },
@@ -369,24 +367,24 @@ const App: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <img src={coin.icon} alt={coin.name} className="w-8 h-8 rounded-full object-cover" />
-                      <span className="text-base font-heading font-bold uppercase text-white tracking-tight">{coin.name}</span>
+                      <span className="text-base font-heading font-black uppercase text-white tracking-tight">{coin.name}</span>
                     </div>
                     <div className={`bg-gradient-to-r ${coin.theme === 'orange' ? 'from-orange-500' : coin.theme === 'emerald' ? 'from-emerald-500' : coin.theme === 'cyan' ? 'from-cyan-500' : 'from-[#facc15]'} to-white px-5 py-2.5 rounded-xl shadow-lg`}>
-                      <span className="text-black text-[16px] font-mono font-medium tracking-wider">
-                        $ {coin.price.toLocaleString('pt-BR', { minimumFractionDigits: coin.id === 'esct' ? 6 : 2 })}
+                      <span className="text-black text-[14px] font-mono font-medium">
+                        $ {coin.price.toLocaleString('pt-BR', { minimumFractionDigits: coin.id === 'bdc' ? 6 : 2 })}
                       </span>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <div className="text-[12px] text-gray-500 font-semibold uppercase tracking-widest mb-2">QTD. TOKENS</div>
-                      <div className="text-[20px] font-heading font-medium text-white leading-none tracking-tight">
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">QTD. TOKENS</div>
+                      <div className="text-[18px] font-heading font-medium text-white leading-none tracking-tighter">
                         {(aporte / coin.price).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[12px] text-gray-500 font-semibold uppercase tracking-widest mb-2">VALOR EM DÓLAR</div>
-                      <div className="text-[20px] font-heading font-medium text-white leading-none flex items-baseline gap-2 tracking-tight">
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">VALOR EM DÓLAR</div>
+                      <div className="text-[18px] font-heading font-medium text-white leading-none flex items-baseline gap-2">
                         <span className="text-sm">$</span>
                         <span>{aporte.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                       </div>
@@ -404,13 +402,13 @@ const App: React.FC = () => {
                 { label: 'Multiplicador Sniper', val: `${roiMultiplierValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}x`, styles: "bg-emerald-500/10 border-emerald-500/50 text-emerald-400" }
               ].map((stat, i) => (
                 <div key={i} className={`p-6 rounded-[28px] border flex flex-col gap-2 transition-all hover:scale-105 ${stat.styles}`}>
-                  <span className={`text-[14px] font-normal uppercase tracking-wider opacity-70`}>{stat.label}</span>
+                  <span className={`text-[10px] font-black uppercase tracking-wider opacity-70`}>{stat.label}</span>
                   <span className={`text-[21px] font-heading font-medium`}>{stat.val}</span>
                 </div>
               ))}
             </div>
 
-            <div className="bg-[#111] p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-10 text-[13px] font-bold uppercase tracking-[0.2em]">
+            <div className="bg-[#111] p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-10 text-[11px] font-black uppercase tracking-[0.2em]">
               {[
                 { label: 'BRONZE ESTRATÉGIA', val: bronzeValStr, pct: bronzePct },
                 { label: 'PRATA PERFORMANCE', val: prataValStr, pct: prataPct },
@@ -418,7 +416,7 @@ const App: React.FC = () => {
               ].map((h, i) => (
                 <div key={i} className="flex-1 flex flex-col gap-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-white font-semibold">{h.label}</span>
+                    <span className="text-white font-bold">{h.label}</span>
                     <span className="text-white font-medium">{h.val}</span>
                   </div>
                   <div className="h-1.5 bg-black rounded-full overflow-hidden shadow-inner">
@@ -429,8 +427,8 @@ const App: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto border border-white/5 rounded-[24px] bg-[#080808] shadow-2xl">
-              <table className="w-full text-[13px] text-left">
-                <thead className="bg-[#111] text-white font-bold uppercase tracking-[0.2em] border-b border-white/5">
+              <table className="w-full text-[10px] text-left">
+                <thead className="bg-[#111] text-white font-black uppercase tracking-[0.2em] border-b border-white/5">
                   <tr>
                     <th className="p-6">Cripto</th>
                     <th className="p-6">Aporte USD</th>
@@ -442,25 +440,25 @@ const App: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#222]">
                   {[
-                    { name: 'ESCT', color: '#10b981', price: esctPrice, icon: 'https://gateway.lighthouse.storage/ipfs/bafkreig4gwqmpwrvai3boloziuzwxhr4yhadkyxrbofxw4wzmccxtkrw3q' },
+                    { name: 'BDC', color: '#10b981', price: bdcPrice, icon: '/FAVICON.png' },
                     { name: 'SOL', color: '#14F195', price: prices.solana, icon: 'https://assets.coingecko.com/coins/images/4128/small/solana.png' },
                     { name: 'ETH', color: '#F97316', price: prices.ethereum, icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
                     { name: 'BTC', color: '#FFC107', price: prices.bitcoin, icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
                   ].map(row => {
                     const stats = calculateRowStats(row.name);
-                    const isESCT = row.name === 'ESCT';
-                    const textClass = row.name === 'ETH' ? 'text-orange-500' : (isESCT ? 'text-emerald-400 font-medium' : (row.name === 'BTC' ? 'text-gold' : (row.name === 'SOL' ? 'text-cyan-400' : 'text-white')));
+                    const isBDC = row.name === 'BDC';
+                    const textClass = row.name === 'ETH' ? 'text-orange-500' : (isBDC ? 'text-emerald-400 font-medium' : (row.name === 'BTC' ? 'text-gold' : (row.name === 'SOL' ? 'text-cyan-400' : 'text-white')));
                     return (
                       <tr key={row.name} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="p-6 flex items-center gap-3">
                           <img src={row.icon} alt={row.name} className="w-6 h-6 rounded-full object-cover" />
-                          <span className={`font-bold ${textClass}`}>{row.name}</span>
+                          <span className={`font-black ${textClass}`}>{row.name}</span>
                         </td>
                         <td className={`p-6 font-mono ${textClass}`}>$ {aporte.toLocaleString()}</td>
                         <td className={`p-6 font-mono ${textClass}`}>{(aporte / row.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                        <td className={`p-6 text-center font-medium uppercase tracking-widest text-[13px] ${textClass}`}>{stats.vStr}</td>
-                        <td className={`p-6 text-center font-medium uppercase tracking-widest text-[13px] ${textClass}`}>{stats.eStr}</td>
-                        <td className={`p-6 font-mono font-medium text-[16px] ${textClass}`}>{stats.roi}</td>
+                        <td className={`p-6 text-center font-medium uppercase tracking-widest text-[10px] ${textClass}`}>{stats.vStr}</td>
+                        <td className={`p-6 text-center font-medium uppercase tracking-widest text-[10px] ${textClass}`}>{stats.eStr}</td>
+                        <td className={`p-6 font-mono font-medium text-xs ${textClass}`}>{stats.roi}</td>
                       </tr>
                     );
                   })}
@@ -473,9 +471,9 @@ const App: React.FC = () => {
         <section className="relative mt-8 group">
           <div className="text-center mb-14">
             <h2 className="text-4xl md:text-5xl font-heading font-black tracking-tighter italic uppercase text-white">HORIZONTE EXPONENCIAL DE RIQUEZA</h2>
-            <p className="text-[14px] text-gray-600 font-black uppercase tracking-[0.6em] mt-2">MODELAGEM MATEMÁTICA DE PERFORMANCE</p>
+            <p className="text-[12px] text-gray-600 font-black uppercase tracking-[0.6em] mt-2">MODELAGEM MATEMÁTICA DE PERFORMANCE</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-10 text-[14px] md:text-[16px] font-bold uppercase tracking-widest text-white">
+          <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-10 text-[12px] md:text-[14px] font-black uppercase tracking-widest text-white">
             <div className="flex items-center gap-3"><div className="w-10 md:w-12 h-2.5 bg-[#A855F7] rounded-full shadow-[0_0_10px_#A855F7]"></div> <span>Posição Alpha</span></div>
             <div className="flex items-center gap-3"><div className="w-10 md:w-12 h-2.5 bg-[#06B6D4] rounded-full shadow-[0_0_10px_#06B6D4]"></div> <span>Yield Alpha</span></div>
             <div className="flex items-center gap-3"><div className="w-10 md:w-12 h-2.5 bg-[#F97316] rounded-full border border-dashed border-white/20"></div> <span>Network Growth</span></div>
@@ -487,9 +485,9 @@ const App: React.FC = () => {
         </section>
       </div>
 
-      <footer className="mt-28 mb-10 text-[14px] text-gray-600 font-black uppercase tracking-[0.6em] text-center flex flex-col gap-2">
-        <span>Esct Sniper Quant System v8.0.0 - Oracle Live Logic</span>
-        <span>Apenas para fins de simulação e modelagem matemática.</span>
+      <footer className="mt-28 mb-10 text-[11px] text-gray-900 font-black uppercase tracking-[1.2em] opacity-30 text-center flex flex-col gap-2">
+        <span>Bode Sniper Quant System v8.0.0 - Oracle Live Logic</span>
+        <span className="tracking-[0.6em] text-[9px]">Apenas para fins de simulação e modelagem matemática.</span>
       </footer>
     </div>
   );

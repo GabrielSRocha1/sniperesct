@@ -8,7 +8,7 @@ import pandas as pd
 from typing import List, Optional
 import time
 
-app = FastAPI(title="Esct Sniper Simulator API")
+app = FastAPI(title="Bode Sniper Simulator API")
 
 # Habilitar CORS para o frontend React
 app.add_middleware(
@@ -37,12 +37,12 @@ async def get_historical(coin: str, months: int):
         "btc": {"mu": 0.05, "sigma": 0.15},
         "eth": {"mu": 0.07, "sigma": 0.22},
         "sol": {"mu": 0.12, "sigma": 0.35},
-        "esct": {"mu": 0.28, "sigma": 0.45}
+        "bdc": {"mu": 0.28, "sigma": 0.45}
     }
     
     coin_key = coin.lower()
     if coin_key not in stats:
-        coin_key = "esct" # Default para ativos de alta performance
+        coin_key = "bdc" # Default para ativos de alta performance
         
     s = stats[coin_key]
     # Retorno acumulado: (1 + mu)^months - 1
